@@ -1,0 +1,2 @@
+# rustybot
+Enbot in Rust
