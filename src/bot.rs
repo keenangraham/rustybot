@@ -143,6 +143,9 @@ impl<'a> RustyBot<'a> {
 		    }
 		    count += 1;
 		}
+	    } else {
+		self.say(&message.channel, &"Bad response, aborting", true);
+		break
 	    }
 	    if self.should_stop() {
 		println!{"Cancelling"};
