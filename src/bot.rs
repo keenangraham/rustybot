@@ -97,13 +97,6 @@ impl<'a> RustyBot<'a> {
         &string.as_ref().unwrap()
     }
 
-    fn contains_status(&self, text: &Option<String>) -> bool {
-        if self.unwrap_string(text).contains("status") {
-	    return true
-	}
-	false
-    }
-
     fn maybe_parse_slack_url(&self, url: &str) -> Option<String> {
 	lazy_static! {
             static ref URL_RE: Regex = Regex::new(r"http[s]?://[a-zA-Z][0-9a-zA-Z_\.]*").unwrap();
@@ -141,10 +134,8 @@ impl<'a> RustyBot<'a> {
 	    let result = get_indexer_results(&parsed_url);
 	    if let Ok(result) = result {
 		if result.status == "indexing" {
-		    println!("indexer indexing");
 		    count = 0;
 		} else if result.status == "waiting" {
-    		    println!("indexer waiting");
 		    if count >= 13 {
 			let value = format!("DONE monitoring {}: {:?}", &parsed_url, result);
 			self.say(&message.channel, &value, true);
@@ -206,7 +197,7 @@ impl<'a> RustyBot<'a> {
 	);
 	match matches {
 	    Ok(matches) => self.handle_matches(matches, &message),
-	    Err(matches) => {
+	    Err(_) => {
 		self.say(&message.channel, self.get_random_emoji(), false);
 	    }
 	}

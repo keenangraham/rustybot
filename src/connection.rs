@@ -1,8 +1,7 @@
 use crate::bot;
 use crate::constants::{self, Worker, Workers};
 use slack::{self, Event, RtmClient, Message};
-use std::{thread, time};
-use std::thread::JoinHandle;
+use std::thread;
 use slack_api::{self, MessageStandard};
 use crossbeam_channel::{unbounded, Sender, Receiver};
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
