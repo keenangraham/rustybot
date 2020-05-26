@@ -11,7 +11,7 @@ use lazy_static;
 
 
 fn get_worker_id() -> usize {
-    static COUNTER:AtomicUsize = AtomicUsize::new(1);
+    static COUNTER:AtomicUsize = AtomicUsize::new(1000);
     COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
@@ -117,7 +117,7 @@ impl Connection {
     
     fn should_cancel_job(&self, text: &Option<String>) -> Option<String> {
 	lazy_static! {
-            static ref JOB_RE: Regex = Regex::new(r"(cancel|stop) ([\d])").unwrap();
+            static ref JOB_RE: Regex = Regex::new(r"(cancel|stop) (\d+)").unwrap();
 	}
 	if let Some(message) = text {
 	    if message.starts_with(constants::BOT_ID) {
