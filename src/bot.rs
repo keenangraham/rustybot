@@ -10,6 +10,7 @@ use std::sync::Arc;
 use clap::{Arg, App, ArgMatches};
 use regex::Regex;
 use lazy_static;
+use reqwest::blocking::Client;
 
 
 pub struct RustyBot<'a> {
@@ -58,7 +59,7 @@ impl<'a> RustyBot<'a> {
 	}
     }
 
-    fn get_client(&self) -> slack_api::requests::Client {
+    fn get_client(&self) -> Client {
 	slack_api::requests::default_client().unwrap()
     }
 
