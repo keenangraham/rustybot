@@ -37,7 +37,17 @@ impl Connection {
     }
     
     pub fn listen(&mut self,) -> Result<(), slack::error::Error> {
-        RtmClient::login_and_run(&self.token.to_owned(), self)
+	let mut count = 0;
+	loop {
+	    println!("LOOP {}", count);
+            let rtm = RtmClient::login_and_run(&self.token.to_owned(), self);
+	    println!("{:?}", rtm);
+	    if count >= 20 {
+		println!("RECONNECT LOOP OVER 20, BREAKING");
+		return rtm;
+	    }
+	    count += 1;
+	}
     }
 
     fn maybe_get_message_from_event<'a>(&self, event: &'a Event) -> Option<&'a Message> {
