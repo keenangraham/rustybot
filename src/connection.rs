@@ -42,10 +42,6 @@ impl Connection {
 	    println!("LOOP {}", count);
             let rtm = RtmClient::login_and_run(&self.token.to_owned(), self);
 	    println!("{:?}", rtm);
-	    if count >= 20 {
-		println!("RECONNECT LOOP OVER 20, BREAKING");
-		return rtm;
-	    }
 	    count += 1;
 	}
     }
