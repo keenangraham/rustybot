@@ -100,7 +100,7 @@ impl<'a> RustyBot<'a> {
 
     fn maybe_parse_slack_url(&self, url: &str) -> Option<String> {
 	lazy_static! {
-            static ref URL_RE: Regex = Regex::new(r"http[s]?://[a-zA-Z][0-9a-zA-Z_\.]*").unwrap();
+            static ref URL_RE: Regex = Regex::new(r"http[s]?://[a-zA-Z][-0-9a-zA-Z_\.]*").unwrap();
 	}
 	if let Some(capture) = URL_RE.captures(url) {
 	    return Some(capture.get(0).unwrap().as_str().to_owned());
