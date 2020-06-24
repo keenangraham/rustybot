@@ -18,3 +18,19 @@ pub const EMOJIS: [&str; 7] = [
     ":microscope:",
     ":man-surfing:"
 ];
+
+pub const HELP: &str = r#"
+USAGE:
+    <@rustybot> [COMMAND]
+COMMANDS:
+    *help*     Print this message
+    *list*     List active jobs
+    *stop/cancel [JOB_ID]*     Cancel job
+    *monitor [URL]*     Monitor URL until indexing is complete
+    *status [URL]*     Return URL indexer status and results
+    *ec2 start [URL]*    Start instance
+    *ec2 stop [URL]*    Stop instance
+    *ec2 resize [URL] --size [SIZE]*     Resize instance
+"#;
+
+pub const RESIZE_INSTANCE: &str = "r5.2xlarge";

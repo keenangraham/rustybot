@@ -1,3 +1,4 @@
+mod aws;
 mod bot;
 mod connection;
 mod constants;
