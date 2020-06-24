@@ -28,9 +28,10 @@ COMMANDS:
     *stop/cancel [JOB_ID]*     Cancel job
     *monitor [URL]*     Monitor URL until indexing is complete
     *status [URL]*     Return URL indexer status and results
+    *ec2 info [URL]*    Get instance info
     *ec2 start [URL]*    Start instance
     *ec2 stop [URL]*    Stop instance
-    *ec2 resize [URL] --size [SIZE]*     Resize instance
+    *ec2 resize [URL] --size [SIZE]*     Resize instance (default r5.2xlarge)
 "#;
 
 pub const RESIZE_INSTANCE: &str = "r5.2xlarge";
