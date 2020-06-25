@@ -49,5 +49,4 @@ EXAMPLES:
 <@rustybot> ec2 ls -f tag:Name=dev-84b292185-keenan -f tag:started_by=keenan
 "#;
 
-
 pub const RESIZE_INSTANCE: &str = "r5.2xlarge";
