@@ -370,6 +370,7 @@ mod tests {
 	assert_eq!(name, "encd-5358-d5b93454a-emma".to_owned());
     }
 
+
     #[test]
     fn test_is_instance_id() {
 	let id = "i-02e86c27e5d31f8d1".to_string();
@@ -381,6 +382,7 @@ mod tests {
 	let id = "http:i-02e86c27e5d31f8d1".to_string();
 	assert_eq!(false, is_instance_id(id));
     }
+
 
     #[test]
     fn test_get_instance_ids_from_url_or_id() {
