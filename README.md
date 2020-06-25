@@ -6,16 +6,16 @@ Enbot in Rust
 USAGE:
     @rustybot [COMMAND]
 COMMANDS:
-    *help*     Print this message
-    *list*     List active jobs
-    *stop/cancel [JOB_ID]*     Cancel job
-    *monitor [URL]*     Monitor URL until indexing is complete
-    *status [URL]*     Return URL indexer status and results
-    *ec2 info [URL/ID]*    Get instance info
-    *ec2 start [URL/ID]*    Start instance
-    *ec2 stop [URL/ID]*    Stop instance
-    *ec2 resize [URL/ID] -s/--size [SIZE]*     Resize instance (default r5.2xlarge)
-    *ec2 ls -f/--filter [KEY=VALUE] -l/--limit [NUM]*     List instances with optional filters
+    help     Print this message
+    list     List active jobs
+    stop/cancel [JOB_ID]     Cancel job
+    monitor [URL]     Monitor URL until indexing is complete
+    status [URL]     Return URL indexer status and results
+    ec2 info [URL/ID]    Get instance info
+    ec2 start [URL/ID]    Start instance
+    ec2 stop [URL/ID]    Stop instance
+    ec2 resize [URL/ID] -s/--size [SIZE]     Resize instance (default r5.2xlarge)
+    ec2 ls -f/--filter [KEY=VALUE] -l/--limit [NUM]     List instances with optional filters
 EXAMPLES:
 @rustybot list
 @rustybot stop 1234
