@@ -52,12 +52,14 @@ fn make_stop_instances_request(instance_ids: Vec<String>) -> StopInstancesReques
     }
 }
 
+
 fn make_start_instances_request(instance_ids: Vec<String>) -> StartInstancesRequest {
     StartInstancesRequest {
 	instance_ids: instance_ids,
 	..Default::default()
     }
 }
+
 
 fn make_modify_instance_type_request(instance_id: String, size: String) -> ModifyInstanceAttributeRequest {
     ModifyInstanceAttributeRequest {
@@ -351,7 +353,7 @@ mod tests {
     fn test_describe_instances_and_parse_info() {
 	let ec2 = make_mock_ec2client(DESCRIBE_INSTANCES_BODY);
 	let instances = get_instances_by_filters(&ec2, vec![]).unwrap();
-        let actual = get_info_from_instances(instances).remove(0);
+	let actual = get_info_from_instances(instances).remove(0);
 	let expected = make_expected_instance_info();
 	assert_eq!(actual, expected);
     }
