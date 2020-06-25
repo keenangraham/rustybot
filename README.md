@@ -1,10 +1,10 @@
-# rustybot
+# Rustybot
 Enbot in Rust
 
 # Help
 ```
 USAGE:
-    <@rustybot> [COMMAND]
+    @rustybot [COMMAND]
 COMMANDS:
     *help*     Print this message
     *list*     List active jobs
