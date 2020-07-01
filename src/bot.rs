@@ -1,4 +1,10 @@
 use crate::constants;
+use crate::aws::start_instance_by_url_or_id;
+use crate::aws::stop_instance_by_url_or_id;
+use crate::aws::resize_instance_by_url_or_id;
+use crate::aws::make_ec2_client;
+use crate::aws::get_instance_info_from_url_or_id;
+use crate::aws::get_instance_info_from_filters;
 use serde::Deserialize;
 use rand::seq::{SliceRandom};
 use std::{thread, time};
@@ -7,7 +13,7 @@ use slack_api::chat::PostMessageRequest;
 use crossbeam_channel::Sender;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use clap::{Arg, App, ArgMatches};
+use clap::{Arg, App, ArgMatches, Values};
 use regex::Regex;
 use lazy_static;
 use reqwest::blocking::Client;
@@ -79,6 +85,20 @@ impl<'a> RustyBot<'a> {
 	text.to_owned()
     }
 
+    fn get_url_value_and_parse(&self, matches: &ArgMatches) -> Option<String> {
+	if let Some(url) = matches.value_of("url") {
+	     return self.maybe_parse_slack_url(url)
+	}
+	None
+    }
+
+    fn get_url_or_id_value_and_parse(&self, matches: &ArgMatches) -> Option<String> {
+	if let Some(url_or_id) = matches.value_of("url_or_id") {
+	     return self.maybe_parse_slack_url_or_id(url_or_id)
+	}
+	None
+    }
+
     fn say(&self, channel: &Option<String>, text: &str, add_job_id: bool) {
         slack_api::chat::post_message(
 	    &self.get_client(),
@@ -108,6 +128,19 @@ impl<'a> RustyBot<'a> {
 	None
     }
 
+    fn maybe_parse_slack_url_or_id(&self, url_or_id: &str) -> Option<String> {
+	lazy_static! {
+            static ref ID_RE: Regex = Regex::new(r"^i-[0-9][0-9a-zA-Z]*").unwrap();
+	}
+	if let Some(url) = self.maybe_parse_slack_url(&url_or_id) {
+	    return Some(url)
+	}
+	if let Some(id) = ID_RE.captures(url_or_id) {
+	    return Some(id.get(0).unwrap().as_str().to_owned());
+	}
+	None
+    }
+
     fn should_stop(&self) -> bool {
 	if self.is_cancelled.load(Ordering::Relaxed) {
 	    return true;
@@ -116,7 +149,7 @@ impl<'a> RustyBot<'a> {
     }
 
     fn make_app(&self) -> App {
-	App::new("Rustbot")
+	App::new("Rustybot")
 	    .subcommand(
 		App::new("status").arg(
 		    Arg::with_name("url")
@@ -125,6 +158,47 @@ impl<'a> RustyBot<'a> {
 		App::new("monitor").arg(
 		    Arg::with_name("url")
 		)
+	    ).subcommand(
+		App::new("help")
+	    ).subcommand(
+		App::new("ec2")
+		    .subcommand(
+			App::new("info").arg(
+			    Arg::with_name("url_or_id")
+			)
+		    ).subcommand(
+			App::new("start").arg(
+			    Arg::with_name("url_or_id")
+			)
+		    ).subcommand(
+			App::new("stop").arg(
+			    Arg::with_name("url_or_id")
+			)
+		    ).subcommand(
+			App::new("resize")
+			    .arg(
+				Arg::with_name("url_or_id")
+			    )
+			    .arg(
+				Arg::with_name("size")
+				    .long("size")
+				    .short("s")
+				    .takes_value(true)
+			    )
+		    ).subcommand(
+			App::new("ls").arg(
+			    Arg::with_name("filter")
+				.long("filter")
+				.short("f")
+				.takes_value(true)
+				.multiple(true)
+			).arg(
+			    Arg::with_name("limit")
+				.long("limit")
+				.short("l")
+				.takes_value(true)
+			)
+		    )
 	    )
     }
 
@@ -158,24 +232,114 @@ impl<'a> RustyBot<'a> {
 
     fn command_monitor(&self,  status: &ArgMatches, message: &MessageStandard) {
 	self.say(&message.channel, &"Looking", true);
-	if let Some(url) = status.value_of("url") {
-	    let maybe_parsed_url = self.maybe_parse_slack_url(url);
-	    if let Some(parsed_url) = maybe_parsed_url {
-		self.poll_indexer(parsed_url, message);
-		return;
-	    }
+	if let Some(parsed_url) = self.get_url_value_and_parse(status) {
+	    self.poll_indexer(parsed_url, message);
+	    return;
 	}
 	self.say(&message.channel, &"Bad input", true);
     }
 
     fn command_status(&self, status: &ArgMatches, message: &MessageStandard) {
 	self.say(&message.channel, &"Looking", true);
-	if let Some(url) = status.value_of("url") {
-	    let maybe_parsed_url = self.maybe_parse_slack_url(url);
-	    if let Some(parsed_url) = maybe_parsed_url {
-		let result = get_indexer_results(&parsed_url);
-		if let Ok(result) = result {
-		    let value = format!("{:?}", result);
+	if let Some(parsed_url) = self.get_url_value_and_parse(status) {
+	    let result = get_indexer_results(&parsed_url);
+	    if let Ok(result) = result {
+		let value = format!("{:?}", result);
+		self.say(&message.channel, &value, true);
+		thread::sleep(time::Duration::from_secs(3));
+		return;
+	    }
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_help(&self,  help: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, constants::HELP, false);
+    }
+
+    fn command_ec2_info(&self, start: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, &"Looking", true);
+	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(start) {
+	    let ec2 = make_ec2_client();
+	    let instance_info = get_instance_info_from_url_or_id(
+		&ec2,
+		parsed_url_or_id.clone()
+	    );
+	    if !instance_info.is_empty() {
+		self.say(&message.channel, &format!("Getting instance info for {}", &parsed_url_or_id), true);
+		let value = format!("{:?}", instance_info);
+		self.say(&message.channel, &value, true);
+		thread::sleep(time::Duration::from_secs(3));
+		return;
+	    }
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_ec2_start(&self, start: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, &"Looking", true);
+	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(start) {
+	    let ec2 = make_ec2_client();
+	    let started_instance = start_instance_by_url_or_id(
+		&ec2,
+		parsed_url_or_id.clone()
+	    );
+	    if let Ok(started_instance) = started_instance {
+		self.say(&message.channel, &format!("Starting instance {}", &parsed_url_or_id), true);
+		let value = format!("{:?}", started_instance);
+		self.say(&message.channel, &value, true);
+		thread::sleep(time::Duration::from_secs(3));
+		return;
+	    }
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_ec2_stop(&self, stop: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, &"Looking", true);
+	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(stop) {
+	    let ec2 = make_ec2_client();
+	    let stopped_instance = stop_instance_by_url_or_id(
+		&ec2,
+		parsed_url_or_id.clone()
+	    );
+	    if let Ok(stopped_instance) = stopped_instance {
+		self.say(&message.channel, &format!("Stopping instance {}", &parsed_url_or_id), true);
+		let value = format!("{:?}", stopped_instance);
+		self.say(&message.channel, &value, true);
+		thread::sleep(time::Duration::from_secs(3));
+		return;
+	    }
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_ec2_resize(&self, resize: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, &"Looking", true);
+	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(resize) {
+	    let ec2 = make_ec2_client();
+	    let size = resize.value_of("size").unwrap_or(
+		constants::RESIZE_INSTANCE
+	    );
+	    let resized_instance = resize_instance_by_url_or_id(
+		&ec2,
+		parsed_url_or_id.clone(),
+		size.to_owned(),
+	    );
+	    match resized_instance {
+		Ok(_) => {
+		    let value = format!(
+			"Resized instance {} to {}: {:?}",
+			&parsed_url_or_id,
+			&size,
+			get_instance_info_from_url_or_id(&ec2, parsed_url_or_id.clone())
+		    );
+		    self.say(&message.channel, &value, true);
+		    thread::sleep(time::Duration::from_secs(3));
+		    return;
+		}
+		Err(error) => {
+		    let value = format!("{}", error);
 		    self.say(&message.channel, &value, true);
 		    thread::sleep(time::Duration::from_secs(3));
 		    return;
@@ -185,11 +349,58 @@ impl<'a> RustyBot<'a> {
 	self.say(&message.channel, &"Bad input", true);
     }
 
+    fn command_ec2_ls(&self, list: &ArgMatches, message: &MessageStandard) {
+	self.say(&message.channel, &"Looking", true);
+        let ec2 = make_ec2_client();
+	let filters = list.values_of("filter")
+	    .unwrap_or(Values::default())
+	    .map(
+		|x| {
+		    let values = x.split("=").collect::<Vec<_>>();
+		    if values.len() == 2 {
+			return Some((values[0].to_string(), values[1].to_string()));
+		    } else {
+			return None;
+		    }
+		}
+	    )
+	    .filter(|x| x.is_some())
+	    .map(|x| x.unwrap())
+	    .collect::<Vec<_>>();
+	let limit = list.value_of("limit").unwrap_or("3").parse::<usize>().unwrap_or(3);
+        let matching_instances = get_instance_info_from_filters(&ec2, filters);
+	if let Ok(matches) = matching_instances {
+	    let results =  matches.iter().enumerate().collect::<Vec<_>>();
+	    let total = results.len();
+	    let value = format!(
+		"Showing {} out of {}:\n{:?}",
+		if limit <= total {limit} else {total},
+		results.len(),
+		results.iter().take(limit).collect::<Vec<_>>()
+	    );
+	    self.say(&message.channel, &value, true);
+	    thread::sleep(time::Duration::from_secs(3));
+	    return;
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
     fn handle_matches(&self, matches: ArgMatches, message: &MessageStandard) {
-	if let Some(status) = matches.subcommand_matches("status") {
-	    self.command_status(status, &message);
-	} else if let Some(monitor) = matches.subcommand_matches("monitor") {
-	    self.command_monitor(monitor, &message);
+	match matches.subcommand() {
+	    ("status", Some(status)) => self.command_status(status, &message),
+	    ("monitor", Some(monitor)) => self.command_monitor(monitor, &message),
+	    ("help", Some(help)) => self.command_help(help, &message),
+	    ("ec2", Some(ec2)) => {
+		match ec2.subcommand() {
+		    ("info", Some(info)) => self.command_ec2_info(info, &message),
+		    ("start", Some(start)) => self.command_ec2_start(start, &message),
+		    ("stop", Some(stop)) => self.command_ec2_stop(stop, &message),
+		    ("resize", Some(resize)) => self.command_ec2_resize(resize, &message),
+		    ("ls", Some(ls)) => self.command_ec2_ls(ls, &message),
+ 		    _ => ()
+		}
+	    },
+	    _ => ()
 	}
     }
 
@@ -201,7 +412,7 @@ impl<'a> RustyBot<'a> {
 	);
 	match matches {
 	    Ok(matches) => self.handle_matches(matches, &message),
-	    Err(_) => {
+	    Err(error) => {
 		self.say(&message.channel, self.get_random_emoji(), false);
 	    }
 	}
