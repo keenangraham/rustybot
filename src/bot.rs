@@ -105,7 +105,10 @@ impl<'a> RustyBot<'a> {
 	    &self.token,
 	    &self.get_message(
 		&self.unwrap_string(channel),
-	        &self.format_text(&text, add_job_id)
+	        &self.format_text(
+		    &text.chars().take(constants::MAX_MESSAGE_SIZE).collect::<String>(),
+		    add_job_id
+		)
 	    )
 	);
     }

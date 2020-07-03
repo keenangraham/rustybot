@@ -116,7 +116,9 @@ impl Connection {
         for worker_id in worker_ids {
 	    if let Some(bot) = self.pop_bot_by_worker_id(&worker_id) {
 		println!("Joining {:?}", &bot.0);
-	        bot.1.join().unwrap();
+	        bot.1.join().unwrap_or_else(
+		    |x| println!("Error joining")
+		);
 	    }
 	};
     }
