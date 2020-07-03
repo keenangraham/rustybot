@@ -50,3 +50,5 @@ EXAMPLES:
 "#;
 
 pub const RESIZE_INSTANCE: &str = "r5.2xlarge";
+
+pub const MAX_MESSAGE_SIZE: usize = 3900;
