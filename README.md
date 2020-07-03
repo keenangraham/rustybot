@@ -23,7 +23,7 @@ EXAMPLES:
     @rustybot stop 1234
     @rustybot status https://www.encodeproject.org/
     @rustybot monitor https://test.encodedcc.org/
-	@rustybot konitor https://sno-158-2dd8b5924-keenan.demo.encodedcc.org/
+    @rustybot konitor https://sno-158-2dd8b5924-keenan.demo.encodedcc.org/
     @rustybot kronitor https://dev-84b292185-keenan.demo.encodedcc.org/
     @rustybot kronitor https://dev-84b292185-keenan.demo.encodedcc.org/ -s c5.4xlarge
     @rustybot ec2 info https://dev-84b292185-keenan.demo.encodedcc.org/
