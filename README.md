@@ -11,7 +11,7 @@ COMMANDS:
     stop/cancel [JOB_ID]     Cancel job
     monitor [URL]     Monitor URL until indexing is complete
     konitor [URL]     Monitor URL until indexing is complete and stop instance
-    kronitor [URL] -s/--size [SIZE]      Monitor URL until is indexing complete, stop and resize instance (default r5.2xlarge)
+    kronitor [URL] -s/--size [SIZE]      Monitor URL until indexing is complete, stop and resize instance (default r5.2xlarge)
     status [URL]     Return URL indexer status and results
     ec2 info [URL/ID]    Get instance info
     ec2 start [URL/ID]    Start instance
