@@ -61,7 +61,37 @@ impl Connection {
 
     fn register_bot(&mut self, worker: Worker) {
 	self.workers.push(worker);
-    } 
+    }
+
+    fn remove_multiple_spaces(&self, message_text: String) -> String {
+	lazy_static! {
+            static ref MULTIPLE_SPACES: Regex = Regex::new(
+		r"\s\s+"
+            ).unwrap();
+	}
+	MULTIPLE_SPACES.replace_all(&message_text, " ").to_string()
+    }
+
+    fn remove_nonbreaking_space(&self, message_text: String) -> String {
+	message_text.replace("\u{a0}", " ").to_string()
+    }
+
+    fn clean_message_text(&self, message_text: String) -> String {
+	self.remove_multiple_spaces(
+	    self.remove_nonbreaking_space(message_text)
+	)
+    }
+
+    fn clean_slack_message(&self, message: &MessageStandard) -> MessageStandard {
+	MessageStandard{
+	    text: Some(
+		self.clean_message_text(
+		    message.text.as_ref().unwrap().to_string()
+		)
+	    ),
+	    ..message.clone()
+	}
+    }
 
     fn spawn_thread(&mut self, message: slack_api::MessageStandard) {
 	let message_text = message.text.as_ref().unwrap().to_string();
@@ -181,7 +211,7 @@ impl slack::EventHandler for Connection {
         let maybe_message = self.maybe_get_message_from_event(&event);
 	match maybe_message {
 	    Some(Message::Standard(message)) => {
-		self.handle_message(cli, message);
+		self.handle_message(cli, &self.clean_slack_message(message));
 	    },
 	    _ => {}
 	}
