@@ -27,6 +27,8 @@ COMMANDS:
     *list*     List active jobs
     *stop/cancel [JOB_ID]*     Cancel job
     *monitor [URL]*     Monitor URL until indexing is complete
+    *konitor [URL]*     Monitor URL until indexing is complete and stop instance
+    *kronitor [URL] -s/--size [SIZE]*     Monitor URL until indexing is complete, stop and resize instance (default r5.2xlarge)
     *status [URL]*     Return URL indexer status and results
     *ec2 info [URL/ID]*    Get instance info
     *ec2 start [URL/ID]*    Start instance
@@ -38,6 +40,9 @@ EXAMPLES:
     <@rustybot> stop 1234
     <@rustybot> status https://www.encodeproject.org/
     <@rustybot> monitor https://test.encodedcc.org/
+    <@rustybot> konitor https://sno-158-2dd8b5924-keenan.demo.encodedcc.org/
+    <@rustybot> kronitor https://dev-84b292185-keenan.demo.encodedcc.org/
+    <@rustybot> kronitor https://dev-84b292185-keenan.demo.encodedcc.org/ -s c5.4xlarge
     <@rustybot> ec2 info https://dev-84b292185-keenan.demo.encodedcc.org/
     <@rustybot> ec2 info i-02e86c27e5d31f8d1
     <@rustybot> ec2 start i-02e86c27e5d31f8d1

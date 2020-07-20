@@ -8,6 +8,7 @@ use crate::aws::get_instance_info_from_filters;
 use serde::Deserialize;
 use rand::seq::{SliceRandom};
 use std::{thread, time};
+use std::error::Error;
 use slack_api::{self, MessageStandard};
 use slack_api::chat::PostMessageRequest;
 use crossbeam_channel::Sender;
@@ -96,7 +97,7 @@ impl<'a> RustyBot<'a> {
 	if let Some(url_or_id) = matches.value_of("url_or_id") {
 	     return self.maybe_parse_slack_url_or_id(url_or_id)
 	}
-	None
+	self.get_url_value_and_parse(matches)
     }
 
     fn say(&self, channel: &Option<String>, text: &str, add_job_id: bool) {
@@ -162,6 +163,20 @@ impl<'a> RustyBot<'a> {
 		    Arg::with_name("url")
 		)
 	    ).subcommand(
+		App::new("konitor").arg(
+		    Arg::with_name("url")
+		)
+	    ).subcommand(
+		App::new("kronitor")
+		    .arg(
+			Arg::with_name("url")
+		    ).arg(
+			Arg::with_name("size")
+			    .long("size")
+			    .short("s")
+			    .takes_value(true)
+		    )
+	    ).subcommand(
 		App::new("help")
 	    ).subcommand(
 		App::new("ec2")
@@ -205,7 +220,7 @@ impl<'a> RustyBot<'a> {
 	    )
     }
 
-    fn poll_indexer(&self, parsed_url: String, message: &MessageStandard) {
+    fn poll_indexer(&self, parsed_url: String, message: &MessageStandard) -> Result<(), Box<dyn Error>> {
 	self.say(&message.channel, &format!("START monitoring {}", &parsed_url), true);
 	let mut count: usize = 0;
 	loop {
@@ -217,33 +232,74 @@ impl<'a> RustyBot<'a> {
 		    if count >= 13 {
 			let value = format!("DONE monitoring {}: {:?}", &parsed_url, result);
 			self.say(&message.channel, &value, true);
-			break
+			return Ok(());
 		    }
 		    count += 1;
 		}
 	    } else {
 		self.say(&message.channel, &"Bad response, aborting", true);
-		break
+		return Err("Bad response".into());
 	    }
 	    if self.should_stop() {
 		println!{"Cancelling"};
-		break
+		return Err("Cancelling".into());
 	    }
 	    thread::sleep(time::Duration::from_secs(5));
 	}
     }
 
-    fn command_monitor(&self,  status: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
-	if let Some(parsed_url) = self.get_url_value_and_parse(status) {
+    fn command_monitor(&self,  monitor: &ArgMatches, message: &MessageStandard) {
+	if let Some(parsed_url) = self.get_url_value_and_parse(monitor) {
 	    self.poll_indexer(parsed_url, message);
 	    return;
 	}
 	self.say(&message.channel, &"Bad input", true);
     }
 
+    fn command_konitor(&self,  konitor: &ArgMatches, message: &MessageStandard) {
+	if let Some(parsed_url) = self.get_url_value_and_parse(konitor) {
+	    let polling = self.poll_indexer(parsed_url, message);
+	    if polling.is_err() {
+		return;
+	    }
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    self.command_ec2_stop(konitor, message);
+	    return;
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_kronitor(&self,  kronitor: &ArgMatches, message: &MessageStandard) {
+	if let Some(parsed_url) = self.get_url_value_and_parse(kronitor) {
+	    let polling = self.poll_indexer(parsed_url, message);
+	    if polling.is_err() {
+		return;
+	    }
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    self.command_ec2_stop(kronitor, message);
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    self.say(&message.channel, &"Waiting to resize", true);
+	    thread::sleep(time::Duration::from_secs(60));
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    self.command_ec2_resize(kronitor, message);
+	    return;
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
     fn command_status(&self, status: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
 	if let Some(parsed_url) = self.get_url_value_and_parse(status) {
 	    let result = get_indexer_results(&parsed_url);
 	    if let Ok(result) = result {
@@ -260,9 +316,8 @@ impl<'a> RustyBot<'a> {
 	self.say(&message.channel, constants::HELP, false);
     }
 
-    fn command_ec2_info(&self, start: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
-	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(start) {
+    fn command_ec2_info(&self, info: &ArgMatches, message: &MessageStandard) {
+	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(info) {
 	    let ec2 = make_ec2_client();
 	    let instance_info = get_instance_info_from_url_or_id(
 		&ec2,
@@ -280,7 +335,6 @@ impl<'a> RustyBot<'a> {
     }
 
     fn command_ec2_start(&self, start: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
 	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(start) {
 	    let ec2 = make_ec2_client();
 	    let started_instance = start_instance_by_url_or_id(
@@ -299,7 +353,6 @@ impl<'a> RustyBot<'a> {
     }
 
     fn command_ec2_stop(&self, stop: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
 	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(stop) {
 	    let ec2 = make_ec2_client();
 	    let stopped_instance = stop_instance_by_url_or_id(
@@ -318,7 +371,6 @@ impl<'a> RustyBot<'a> {
     }
 
     fn command_ec2_resize(&self, resize: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
 	if let Some(parsed_url_or_id) = self.get_url_or_id_value_and_parse(resize) {
 	    let ec2 = make_ec2_client();
 	    let size = resize.value_of("size").unwrap_or(
@@ -353,7 +405,6 @@ impl<'a> RustyBot<'a> {
     }
 
     fn command_ec2_ls(&self, list: &ArgMatches, message: &MessageStandard) {
-	self.say(&message.channel, &"Looking", true);
         let ec2 = make_ec2_client();
 	let filters = list.values_of("filter")
 	    .unwrap_or(Values::default())
@@ -392,6 +443,8 @@ impl<'a> RustyBot<'a> {
 	match matches.subcommand() {
 	    ("status", Some(status)) => self.command_status(status, &message),
 	    ("monitor", Some(monitor)) => self.command_monitor(monitor, &message),
+	    ("konitor", Some(konitor)) => self.command_konitor(konitor, &message),
+	    ("kronitor", Some(kronitor)) => self.command_kronitor(kronitor, &message),
 	    ("help", Some(help)) => self.command_help(help, &message),
 	    ("ec2", Some(ec2)) => {
 		match ec2.subcommand() {
