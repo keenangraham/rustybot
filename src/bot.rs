@@ -54,6 +54,17 @@ pub async fn get_indexer_results(url: &str) -> Result<Indexer, reqwest::Error> {
 }
 
 
+#[tokio::main]
+pub async fn get_visindexer_results(url: &str) -> Result<Indexer, reqwest::Error> {
+    let indexer = format!("{}/_visindexer", url);
+    let json = reqwest::get(&indexer)
+        .await?
+	.json()
+	.await?;
+    Ok(json)
+}
+
+
 impl<'a> RustyBot<'a> {
     pub fn new(token: String, worker_id: String, tx: Sender<String>, is_cancelled: Arc<AtomicBool>) -> Self {
         RustyBot {
@@ -248,6 +259,35 @@ impl<'a> RustyBot<'a> {
 	}
     }
 
+    fn poll_visindexer(&self, parsed_url: String, message: &MessageStandard) -> Result<(), Box<dyn Error>> {
+	self.say(&message.channel, &format!("START monitoring vis_indexer {}", &parsed_url), true);
+	thread::sleep(time::Duration::from_secs(60));
+	let mut count: usize = 0;
+	loop {
+	    let result = get_visindexer_results(&parsed_url);
+	    if let Ok(result) = result {
+		if result.status == "indexing" {
+		    count = 0;
+		} else if result.status == "waiting" {
+		    if count >= 13 {
+			let value = format!("DONE monitoring vis_indexer {}: {:?}", &parsed_url, result);
+			self.say(&message.channel, &value, true);
+			return Ok(());
+		    }
+		    count += 1;
+		}
+	    } else {
+		self.say(&message.channel, &"Bad response, aborting", true);
+		return Err("Bad response".into());
+	    }
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return Err("Cancelling".into());
+	    }
+	    thread::sleep(time::Duration::from_secs(5));
+	}
+    }
+
     fn command_monitor(&self,  monitor: &ArgMatches, message: &MessageStandard) {
 	if let Some(parsed_url) = self.get_url_value_and_parse(monitor) {
 	    self.poll_indexer(parsed_url, message);
@@ -258,8 +298,16 @@ impl<'a> RustyBot<'a> {
 
     fn command_konitor(&self,  konitor: &ArgMatches, message: &MessageStandard) {
 	if let Some(parsed_url) = self.get_url_value_and_parse(konitor) {
-	    let polling = self.poll_indexer(parsed_url, message);
+	    let polling = self.poll_indexer(parsed_url.to_owned(), message);
 	    if polling.is_err() {
+		return;
+	    }
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    let vispolling = self.poll_visindexer(parsed_url.to_owned(), message);
+	    if vispolling.is_err() {
 		return;
 	    }
 	    if self.should_stop() {
@@ -274,8 +322,16 @@ impl<'a> RustyBot<'a> {
 
     fn command_kronitor(&self,  kronitor: &ArgMatches, message: &MessageStandard) {
 	if let Some(parsed_url) = self.get_url_value_and_parse(kronitor) {
-	    let polling = self.poll_indexer(parsed_url, message);
+	    let polling = self.poll_indexer(parsed_url.to_owned(), message);
 	    if polling.is_err() {
+		return;
+	    }
+	    if self.should_stop() {
+		println!{"Cancelling"};
+		return;
+	    }
+	    let vispolling = self.poll_visindexer(parsed_url.to_owned(), message);
+	    if vispolling.is_err() {
 		return;
 	    }
 	    if self.should_stop() {
