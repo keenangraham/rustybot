@@ -174,6 +174,10 @@ impl<'a> RustyBot<'a> {
 		    Arg::with_name("url")
 		)
 	    ).subcommand(
+		App::new("vonitor").arg(
+		    Arg::with_name("url")
+		)
+	    ).subcommand(
 		App::new("konitor").arg(
 		    Arg::with_name("url")
 		)
@@ -291,6 +295,14 @@ impl<'a> RustyBot<'a> {
     fn command_monitor(&self,  monitor: &ArgMatches, message: &MessageStandard) {
 	if let Some(parsed_url) = self.get_url_value_and_parse(monitor) {
 	    self.poll_indexer(parsed_url, message);
+	    return;
+	}
+	self.say(&message.channel, &"Bad input", true);
+    }
+
+    fn command_vonitor(&self,  vonitor: &ArgMatches, message: &MessageStandard) {
+	if let Some(parsed_url) = self.get_url_value_and_parse(vonitor) {
+	    self.poll_visindexer(parsed_url, message);
 	    return;
 	}
 	self.say(&message.channel, &"Bad input", true);
@@ -499,6 +511,7 @@ impl<'a> RustyBot<'a> {
 	match matches.subcommand() {
 	    ("status", Some(status)) => self.command_status(status, &message),
 	    ("monitor", Some(monitor)) => self.command_monitor(monitor, &message),
+	    ("vonitor", Some(vonitor)) => self.command_vonitor(vonitor, &message),
 	    ("konitor", Some(konitor)) => self.command_konitor(konitor, &message),
 	    ("kronitor", Some(kronitor)) => self.command_kronitor(kronitor, &message),
 	    ("help", Some(help)) => self.command_help(help, &message),
