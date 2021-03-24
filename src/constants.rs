@@ -27,6 +27,7 @@ COMMANDS:
     *list*     List active jobs
     *stop/cancel [JOB_ID]*     Cancel job
     *monitor [URL]*     Monitor URL until indexing is complete
+    *vonitor [URL]*     Monitor URL until visindexing is complete
     *konitor [URL]*     Monitor URL until indexing is complete and stop instance
     *kronitor [URL] -s/--size [SIZE]*     Monitor URL until indexing is complete, stop and resize instance (default r5.2xlarge)
     *status [URL]*     Return URL indexer status and results
@@ -40,6 +41,7 @@ EXAMPLES:
     <@rustybot> stop 1234
     <@rustybot> status https://www.encodeproject.org/
     <@rustybot> monitor https://test.encodedcc.org/
+    <@rustybot> vonitor https://encd-5745-a25e2d404-keenan.demo.encodedcc.org/
     <@rustybot> konitor https://sno-158-2dd8b5924-keenan.demo.encodedcc.org/
     <@rustybot> kronitor https://dev-84b292185-keenan.demo.encodedcc.org/
     <@rustybot> kronitor https://dev-84b292185-keenan.demo.encodedcc.org/ -s c5.4xlarge
