@@ -356,7 +356,7 @@ impl<'a> RustyBot<'a> {
 		return;
 	    }
 	    self.say(&message.channel, &"Waiting to resize", true);
-	    thread::sleep(time::Duration::from_secs(60));
+	    thread::sleep(time::Duration::from_secs(120));
 	    if self.should_stop() {
 		println!{"Cancelling"};
 		return;
