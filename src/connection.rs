@@ -169,7 +169,7 @@ impl Connection {
 
     fn should_list_active_jobs(&self, text: &Option<String>) -> bool {
 	if let Some(message) = text {
-	    if message.starts_with(constants::BOT_ID) && message.contains("list") {
+	    if message.trim_end() == format!("{} list", constants::BOT_ID) {
 		return true
 	    }
 	}
